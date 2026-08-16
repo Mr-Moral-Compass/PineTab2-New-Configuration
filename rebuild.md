@@ -1,0 +1,1 @@
+sudo nixos-rebuild switch --flake '.#pinetab2' --option experimental-features "nix-command flakes" --option substituters "https://cache.nixos.org https://nixos-rockchip.cachix.org" --option trusted-public-keys "nabam-nixos-rockchip.cachix.org-1:BQDltcnV8GS/G86tdvjLwLFz1WeFqSk7O9yl+DR0AVM="
