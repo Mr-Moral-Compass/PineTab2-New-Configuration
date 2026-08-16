@@ -16,13 +16,20 @@ After booting, enable networking [with wpa_supplicant](https://nixos.org/manual/
 
 Run the following commands:
 
-$ nmtui # to connect/activate Wifi SSID
-$ nix-shell -p wget # May take a few minutes... like every command
-$ wget https://raw.githubusercontent.com/Mr-Moral-Compass/PineTab2-New-Configuration/refs/heads/main/flake.nix
-$ sudo cp flake.nix /etc/nixos/flake.nix
-$ sudo su
+> nmtui # to connect/activate Wifi SSID
+> 
+> nix-shell -p wget # May take a few minutes... like every command
+> 
+> wget https://raw.githubusercontent.com/Mr-Moral-Compass/PineTab2-New-Configuration/refs/heads/main/flake.nix
+> 
+> sudo cp flake.nix /etc/nixos/flake.nix
+> 
+> sudo su
+> 
 > cd /etc/nixos/
+> 
 > sudo nixos-rebuild switch --flake '.#pinetab2' --option experimental-features "nix-command flakes" --option substituters "https://cache.nixos.org https://nixos-rockchip.cachix.org" --option trusted-public-keys "nabam-nixos-rockchip.cachix.org-1:BQDltcnV8GS/G86tdvjLwLFz1WeFqSk7O9yl+DR0AVM="
+> 
 > reboot
 
 After the first `nixos-rebuild`, you may need to reconnect to the network using `nmtui`.
