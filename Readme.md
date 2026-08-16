@@ -18,7 +18,7 @@ Run the following commands:
 
     nmtui # to connect/activate Wifi SSID
 > 
-    nix-shell -p wget # May take a few minutes... like every command
+    nix-shell -p wget --extra-experimental-features flakes # May take a few minutes... like every command
 > 
     wget https://raw.githubusercontent.com/Mr-Moral-Compass/PineTab2-New-Configuration/refs/heads/main/flake.nix
 > 
