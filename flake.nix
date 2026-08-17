@@ -3,7 +3,7 @@
 
   # Fixes all three issues at once: stable release channel, actual hardware branch (not bogus), and modern kernel variant that actually exists in the flake.
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs?ref=stable-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
     nixos-rockchip = {
       url = "github:nabam/nixos-rockchip/main";
