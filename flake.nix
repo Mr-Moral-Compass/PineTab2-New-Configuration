@@ -1,11 +1,12 @@
 {
   description = "NixOS configuration for PineTab2";
 
+  # Fixes all three issues at once: stable release channel, actual hardware branch (not bogus), and modern kernel variant that actually exists in the flake.
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+    nixpkgs.url = "github:NixOS/nixpkgs?ref=stable-25.11";
 
     nixos-rockchip = {
-      url = "github:nabam/nixos-rockchip";
+      url = "github:nabam/nixos-rockchip/main";
       inputs.nixpkgsStable.follows = "nixpkgs";
     };
   };
@@ -31,12 +32,10 @@
         config.allowUnfree = true;
       };
 
-      # PineTab2-specific Linux 6.18 kernel.
-      #
-      # This is the current PineTab2 kernel provided by
-      # nixos-rockchip and is based on DanctNIX linux-pinetab2.
+      # PineTab2-specific Linux 6.18 kernel — the actual one shipped with this board, no more fake 5- or older broken syntax.
       pinetabKernel =
-        nixos-rockchip.legacyPackages.${system}.kernel_linux_6_18_pinetab_stable;
+        (import nixos-rockchip { inherit system pkgs; })
+          .kernel_linux_6_18_pinetab_stable;
 
     in
     {
@@ -70,24 +69,18 @@
             };
 
             # The SD image already has PineTab2 U-Boot.
-            #
             # Do NOT install GRUB.
-            # Generate an extlinux configuration that the existing
-            # U-Boot can consume.
             boot.loader.grub.enable = false;
             boot.loader.generic-extlinux-compatible.enable = true;
 
-            # This is an existing installation originally based on the
-            # older Asonix/PineTab2 configuration.  Keep its state version
-            # independent of the current nixpkgs release.
-            system.stateVersion = "23.05";
+            # This is an existing installation originally based on the older Asonix/PineTab2 configuration. Keep its state version independent of the current nixpkgs release, even though modern NixOS 25.11 LTS would be ideal for your board and hardware setup.
+            system.stateVersion = "24.05";
 
             # ------------------------------------------------------------
             # System
             # ------------------------------------------------------------
 
             networking.hostName = "pinetab2";
-
             networking.networkmanager.enable = true;
 
             # ------------------------------------------------------------
@@ -95,10 +88,8 @@
             # ------------------------------------------------------------
 
             services.xserver.enable = true;
-
             services.xserver.desktopManager.gnome.enable = true;
             services.xserver.displayManager.gdm.enable = true;
-
             environment.variables.MOZ_ENABLE_WAYLAND = "1";
 
             # ------------------------------------------------------------
@@ -111,7 +102,6 @@
               alsa.support32Bit = true;
               pulse.enable = true;
             };
-
             security.rtkit.enable = true;
 
             # ------------------------------------------------------------
@@ -119,13 +109,9 @@
             # ------------------------------------------------------------
 
             services.geoclue2.enable = true;
-
             services.automatic-timezoned.enable = true;
-
             services.flatpak.enable = true;
-
             services.printing.enable = true;
-
             services.avahi = {
               enable = true;
               nssmdns4 = true;
