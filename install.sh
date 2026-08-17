@@ -36,7 +36,7 @@ sudo mount $dev1"p2" -o subvol=@home /mnt/home
 sudo mount $dev1"p2" -o subvol=@var-lib-waydroid /mnt/var/lib/waydroid
 sudo mount $dev1"p2" -o subvol=@etc-Net-sysconn /mnt/etc/NetowrkManager/system-connections
 cd $tmpgit
-nix-shell -p git --run "git clone -b pinetab2-minimal https://github.com/tromshusky/nixos"
+nix-shell -p git --extra-experimental-features "nix-command flakes" --run "git clone -b pinetab2-minimal https://github.com/tromshusky/nixos" 
 cd nixos
 sudo nixos-generate-config --show-hardware-config > hardware-configuration.nix
 sudo nix --extra-experimental-features "nix-command flakes" build .#nixosConfigurations.pinetab2.config.system.build.toplevel --extra-substituters https://pinetab2-kernel.cachix.org?trusted=1
