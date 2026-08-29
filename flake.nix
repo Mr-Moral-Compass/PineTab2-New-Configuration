@@ -1,142 +1,159 @@
 {
-  description = "NixOS configuration for PineTab2";
-
-  # Fixes all three issues at once: stable release channel, actual hardware branch (not bogus), and modern kernel variant that actually exists in the flake.
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
-
-    nixos-rockchip = {
-      url = "github:nabam/nixos-rockchip/main";
-      inputs.nixpkgsStable.follows = "nixpkgs";
-    };
+    nixpkgsStable.url = "nixpkgs/nixos-26.05";
+    nixpkgs.url = "nixpkgs/nixos-unstable";
+    rockchip.url = "github:nabam/nixos-rockchip";
   };
 
-  # Use the binary cache provided by nixos-rockchip.
-  # This is especially important for the PineTab2 kernel.
+  # Use cache with packages from nabam/nixos-rockchip CI.
   nixConfig = {
-    extra-substituters = [
-      "https://nabam-nixos-rockchip.cachix.org"
-    ];
-
+    extra-substituters = [ "https://nabam-nixos-rockchip.cachix.org" ];
     extra-trusted-public-keys = [
-      "nabam-nixos-rockchip.cachix.org-1:BQDltcnV8GS/G86tdvjLwLFz1WeFqSk7O9yl+DR0AVM="
+      "nabam-nixos-rockchip.cachix.org-1:BQDltcnV8GS/G86tdvjLwLFz1WeFqSk7O9yl+DR0AVM"
     ];
   };
 
-  outputs = { self, nixpkgs, nixos-rockchip, ... }:
-    let
-      system = "aarch64-linux";
+  outputs = { self, nixpkgs, rockchip, ... }:
+  let
+    system = "aarch64-linux";
+    hostname = "PineTab2";
+    username = "pinetab2";
+    initialPassword = "changeme";
 
-      pkgs = import nixpkgs {
-        inherit system;
-        config.allowUnfree = true;
-      };
+    pkgs = import nixpkgs {
+      inherit system;
+    };
 
-      # PineTab2-specific Linux 6.18 kernel — the actual one shipped with this board, no more fake 5- or older broken syntax.
-      pinetabKernel =
-        (import nixos-rockchip { inherit system pkgs; })
-          .kernel_linux_6_18_pinetab_stable;
+    buildNixosConfiguration = { kernel, uBoot }: nixpkgs.lib.nixosSystem {
+      inherit system;
 
-    in
-    {
-      nixosConfigurations.pinetab2 = nixpkgs.lib.nixosSystem {
-        inherit system;
+      modules = [
+        rockchip.nixosModules.sdImageRockchip
+        rockchip.nixosModules.dtOverlayPCIeFix
 
-        modules = [
-          # PineTab2 hardware support.
-          nixos-rockchip.nixosModules.dtOverlayPineTab2
-          nixos-rockchip.nixosModules.bes2600
-          nixos-rockchip.nixosModules.noZFS
-
-          {
-            nixpkgs.hostPlatform = system;
-
-            # PineTab2-specific kernel.
-            boot.kernelPackages = pinetabKernel;
-
-            # ------------------------------------------------------------
-            # Existing PineTab2 SD-card filesystem
-            # ------------------------------------------------------------
-
-            fileSystems."/" = {
-              device = "/dev/disk/by-uuid/72475447-7667-4f89-bc4a-fd19046236b3";
-              fsType = "ext4";
+        # pinetab2 cachix
+        {
+          nix = {
+            settings = {
+              substituters = [
+                "https://pinetab2.cachix.org"
+              ];
+              trusted-public-keys = [
+                "pinetab2.cachix.org-1:q3+zliGsfh1MH76ugM2GkPQcO2nALvM3sDSS/dXnxcE="
+              ];
             };
+          };
+        }
 
-            fileSystems."/boot" = {
-              device = "/dev/disk/by-uuid/14D2-6235";
-              fsType = "vfat";
-            };
+        ({ pkgs, lib, ... }: {
+          # Ensure we don't try building zfs modules for the kernel (they're broken)
+          nixpkgs.overlays = [
+            (final: super: {
+              zfs = super.zfs.overrideAttrs (_: {
+                meta.platforms = [ ];
+              });
+            })
+          ];
 
-            # The SD image already has PineTab2 U-Boot.
-            # Do NOT install GRUB.
-            boot.loader.grub.enable = false;
-            boot.loader.generic-extlinux-compatible.enable = true;
+          system.stateVersion = "23.11";
 
-            # This is an existing installation originally based on the older Asonix/PineTab2 configuration. Keep its state version independent of the current nixpkgs release, even though modern NixOS 25.11 LTS would be ideal for your board and hardware setup.
-            system.stateVersion = "24.05";
+          users.users.${username} = {
+            inherit initialPassword;
+            isNormalUser = true;
+            extraGroups = [ "wheel" "networkmanager" ];
+          };
 
-            # ------------------------------------------------------------
-            # System
-            # ------------------------------------------------------------
+          rockchip.uBoot = (rockchip.uBoot system).uBootPineTab2;
 
-            networking.hostName = "pinetab2";
-            networking.networkmanager.enable = true;
+          boot.kernelPackages = kernel;
+          boot.kernelParams = [ "console=ttyS2,1500000n8" "rootwait" "root=LABEL=NIXOS_SD" "rw" ];
 
-            # ------------------------------------------------------------
-            # Desktop
-            # ------------------------------------------------------------
+          networking.networkmanager.enable = true;
 
-            services.xserver.enable = true;
-            services.xserver.desktopManager.gnome.enable = true;
-            services.xserver.displayManager.gdm.enable = true;
-            environment.variables.MOZ_ENABLE_WAYLAND = "1";
-
-            # ------------------------------------------------------------
-            # Audio
-            # ------------------------------------------------------------
-
-            services.pipewire = {
+          services = {
+            xserver = {
               enable = true;
-              alsa.enable = true;
-              alsa.support32Bit = true;
-              pulse.enable = true;
+              desktopManager.gnome.enable = true;
+              displayManager.gdm.enable = true;
             };
-            security.rtkit.enable = true;
 
-            # ------------------------------------------------------------
-            # Hardware / desktop services
-            # ------------------------------------------------------------
+            automatic-timezoned.enable = true;
+            geoclue2.enableDemoAgent = lib.mkForce true;
 
-            services.geoclue2.enable = true;
-            services.automatic-timezoned.enable = true;
-            services.flatpak.enable = true;
-            services.printing.enable = true;
-            services.avahi = {
+            flatpak.enable = true;
+            printing.enable = true;
+
+            programs.appimage.enable = true;
+            programs.appimage.binfmt = true;
+
+            avahi = {
               enable = true;
-              nssmdns4 = true;
               openFirewall = true;
             };
 
-            # ------------------------------------------------------------
-            # Packages
-            # ------------------------------------------------------------
+            pipewire = {
+              enable = true;
+              alsa = {
+                enable = true;
+                support32Bit = true;
+              };
+              pulse.enable = true;
+              jack.enable = true;
+            };
+          };
 
-            environment.systemPackages = with pkgs; [
-              firefox
-              htop
-            ];
+          #sound.enable = true;
+          hardware.pulseaudio.enable = false;
+          security.rtkit.enable = true;
 
-            # ------------------------------------------------------------
-            # Nix
-            # ------------------------------------------------------------
+          environment.systemPackages = with pkgs; [
+            cachix
+            firefox
+            gnomeExtensions.arc-menu
+            gnomeExtensions.dash-to-dock
+            gnomeExtensions.dash-to-panel
+            gnomeExtensions.gjs-osk
+            gnomeExtensions.one-window-wonderland
+            htop
+          ];
 
-            nix.settings.experimental-features = [
-              "nix-command"
-              "flakes"
-            ];
-          }
-        ];
-      };
+          environment.sessionVariables = {
+            MOZ_ENABLE_WAYLAND = "1";
+          };
+
+          networking.hostName = "${hostname}";
+                nixPath = [
+        "nixpkgs=${inputs.nixpkgs}"
+      ];
+    
+          nix.optimise.automatic = true;
+    
+          nix.gc = {
+            automatic = true;
+            dates = "weekly";
+            options = "--delete-older-than 7d";
+          };
+
+          nix.settings = {
+            experimental-features = [ "nix-command" "flakes" ];
+          };
+        })
+      ];
     };
+  in
+  {
+    nixosConfigurations.${hostname} = buildNixosConfiguration {
+      # use a custom kernel for next rebuild (we have cachix now)
+      kernel = inputs.rockchip.legacyPackages.${buildPlatform}.kernel_linux_latest_rockchip_stable;
+      # kernel = pkgs.linuxPackages_latest;
+      # todo: uboot isn't required after we're already booting
+      uBoot = inputs.rockchip.packages.${buildPlatform}.uBootPineTab2;
+    };
+    nixosConfigurations.nixos = buildNixosConfiguration {
+      # use a prebuilt kernel for first rebuild
+      kernel = pkgs.linuxPackages_latest;
+      # todo: uboot isn't required after we're already booting
+      uBoot = (rockchip.uBoot system).uBootPineTab2;
+    };
+  };
 }
