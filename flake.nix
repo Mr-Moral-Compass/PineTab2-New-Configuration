@@ -5,14 +5,6 @@
     rockchip.url = "github:nabam/nixos-rockchip";
   };
 
-  # Use cache with packages from nabam/nixos-rockchip CI.
-  nixConfig = {
-    extra-substituters = [ "https://nabam-nixos-rockchip.cachix.org" ];
-    extra-trusted-public-keys = [
-      "nabam-nixos-rockchip.cachix.org-1:BQDltcnV8GS/G86tdvjLwLFz1WeFqSk7O9yl+DR0AVM"
-    ];
-  };
-
   outputs = { self, nixpkgs, rockchip, ... }:
   let
     system = "aarch64-linux";
@@ -32,14 +24,17 @@
         rockchip.nixosModules.dtOverlayPCIeFix
 
         # pinetab2 cachix
+        # Use cache with packages from nabam/nixos-rockchip CI.
         {
           nix = {
             settings = {
               substituters = [
                 "https://pinetab2.cachix.org"
+                "https://nabam-nixos-rockchip.cachix.org"
               ];
               trusted-public-keys = [
                 "pinetab2.cachix.org-1:q3+zliGsfh1MH76ugM2GkPQcO2nALvM3sDSS/dXnxcE="
+                "nabam-nixos-rockchip.cachix.org-1:BQDltcnV8GS/G86tdvjLwLFz1WeFqSk7O9yl+DR0AVM"
               ];
             };
           };
