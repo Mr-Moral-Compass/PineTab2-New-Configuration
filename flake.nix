@@ -118,7 +118,7 @@
 
           networking.hostName = "${hostname}";
                 nixPath = [
-        "nixpkgs=${inputs.nixpkgs}"
+        "nixpkgs=${nixpkgs}"
       ];
     
           nix.optimise.automatic = true;
